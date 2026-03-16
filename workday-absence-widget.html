@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workday Absence Widget</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f2f5;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 32px 16px;
+    }
+
+    .widget {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      width: 100%;
+      max-width: 720px;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    .widget-header {
+      background: linear-gradient(135deg, #005cb9 0%, #003e82 100%);
+      color: #fff;
+      padding: 22px 28px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .wd-logo {
+      width: 52px;
+      height: 52px;
+      background: #fff;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .wd-logo svg {
+      width: 36px;
+      height: 36px;
+    }
+
+    .header-info { flex: 1; }
+
+    .app-label {
+      font-size: 11px;
+      font-weight: 700;
+      opacity: 0.75;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+    }
+
+    .app-title {
+      font-size: 19px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .employee-pill {
+      background: rgba(255,255,255,0.15);
+      border-radius: 24px;
+      padding: 8px 16px;
+      text-align: right;
+    }
+
+    .employee-name {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .employee-meta {
+      font-size: 11px;
+      opacity: 0.75;
+      margin-top: 2px;
+    }
+
+    /* ── Balance cards ── */
+    .section { padding: 20px 24px; }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.9px;
+      text-transform: uppercase;
+      color: #888;
+      margin-bottom: 14px;
+    }
+
+    .balance-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .balance-card {
+      border: 1.5px solid #e8eaf0;
+      border-radius: 12px;
+      padding: 16px 14px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .balance-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 4px;
+    }
+
+    .balance-card.vacation::before { background: #005cb9; }
+    .balance-card.sick::before     { background: #e67e22; }
+    .balance-card.personal::before { background: #27ae60; }
+
+    .balance-type {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    .balance-days {
+      font-size: 36px;
+      font-weight: 800;
+      line-height: 1.1;
+      margin-top: 8px;
+    }
+
+    .balance-card.vacation .balance-days { color: #005cb9; }
+    .balance-card.sick     .balance-days { color: #e67e22; }
+    .balance-card.personal .balance-days { color: #27ae60; }
+
+    .balance-sub {
+      font-size: 11px;
+      color: #aaa;
+      margin-top: 4px;
+    }
+
+    .balance-bar-wrap {
+      background: #f0f2f5;
+      border-radius: 4px;
+      height: 5px;
+      margin-top: 12px;
+      overflow: hidden;
+    }
+
+    .balance-bar {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.6s ease;
+    }
+
+    .balance-card.vacation .balance-bar { background: #005cb9; }
+    .balance-card.sick     .balance-bar { background: #e67e22; }
+    .balance-card.personal .balance-bar { background: #27ae60; }
+
+    /* ── Divider ── */
+    .divider { border: none; border-top: 1px solid #efefef; margin: 0; }
+
+    /* ── Calendar strip ── */
+    .calendar-strip {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .cal-day {
+      text-align: center;
+      padding: 8px 4px;
+      border-radius: 8px;
+      font-size: 12px;
+    }
+
+    .cal-day .dow {
+      font-weight: 700;
+      color: #aaa;
+      font-size: 10px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .cal-day .date-num {
+      font-size: 15px;
+      font-weight: 700;
+      color: #222;
+      margin-top: 3px;
+    }
+
+    .cal-day.today {
+      background: #005cb9;
+    }
+
+    .cal-day.today .dow,
+    .cal-day.today .date-num { color: #fff; }
+
+    .cal-day.absence {
+      background: #fff3e0;
+    }
+
+    .cal-day.absence .date-num { color: #e67e22; }
+
+    .cal-day.weekend .date-num { color: #ccc; }
+    .cal-day.weekend .dow { color: #ddd; }
+
+    .calendar-legend {
+      display: flex;
+      gap: 16px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #888;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+    }
+
+    .legend-dot.today   { background: #005cb9; }
+    .legend-dot.absence { background: #ffe0b2; border: 1.5px solid #e67e22; }
+
+    /* ── Requests table ── */
+    .requests-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 4px;
+    }
+
+    .requests-table th {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: #aaa;
+      padding: 6px 10px;
+      text-align: left;
+      border-bottom: 1.5px solid #efefef;
+    }
+
+    .requests-table td {
+      padding: 11px 10px;
+      font-size: 13px;
+      color: #333;
+      border-bottom: 1px solid #f5f5f5;
+    }
+
+    .requests-table tr:last-child td { border-bottom: none; }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .status-badge.approved {
+      background: #e8f5e9;
+      color: #27ae60;
+    }
+
+    .status-badge.pending {
+      background: #fff8e1;
+      color: #f39c12;
+    }
+
+    .status-badge.denied {
+      background: #fdecea;
+      color: #e74c3c;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+
+    .approved .status-dot { background: #27ae60; }
+    .pending  .status-dot { background: #f39c12; }
+    .denied   .status-dot { background: #e74c3c; }
+
+    /* ── Request button ── */
+    .actions-row {
+      padding: 14px 24px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn-request {
+      background: #005cb9;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 22px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-request:hover { background: #004a96; }
+
+    .btn-request svg { flex-shrink: 0; }
+
+    /* ── Footer ── */
+    .widget-footer {
+      padding: 10px 24px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid #efefef;
+    }
+
+    .last-updated {
+      font-size: 11px;
+      color: #bbb;
+    }
+
+    .footer-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .demo-badge {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: #bbb;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 2px 6px;
+    }
+
+    .refresh-btn {
+      font-size: 12px;
+      font-weight: 700;
+      color: #005cb9;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+
+    .refresh-btn:hover { background: #eef4ff; }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+      width: 100%;
+      max-width: 440px;
+      padding: 28px;
+      transform: translateY(16px);
+      transition: transform 0.2s;
+    }
+
+    .modal-overlay.open .modal { transform: translateY(0); }
+
+    .modal-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: #111;
+      margin-bottom: 20px;
+    }
+
+    .form-row { margin-bottom: 16px; }
+
+    .form-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      color: #888;
+      margin-bottom: 6px;
+    }
+
+    .form-select,
+    .form-input {
+      width: 100%;
+      border: 1.5px solid #ddd;
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 13px;
+      color: #222;
+      background: #fafafa;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .form-select:focus,
+    .form-input:focus { border-color: #005cb9; background: #fff; }
+
+    .form-row-duo {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 22px;
+    }
+
+    .btn-cancel {
+      background: none;
+      border: 1.5px solid #ddd;
+      border-radius: 8px;
+      padding: 9px 20px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #666;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn-cancel:hover { background: #f5f5f5; }
+
+    .btn-submit {
+      background: #005cb9;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 9px 20px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn-submit:hover { background: #004a96; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #27ae60;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+      z-index: 200;
+      transform: translateY(80px);
+      opacity: 0;
+      transition: transform 0.3s, opacity 0.3s;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    @media (max-width: 540px) {
+      .balance-grid { grid-template-columns: 1fr; }
+      .calendar-strip { grid-template-columns: repeat(7, 1fr); gap: 3px; }
+      .cal-day { padding: 5px 2px; }
+      .form-row-duo { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="widget" id="widget">
+
+  <!-- Header -->
+  <div class="widget-header">
+    <div class="wd-logo" aria-label="Workday">
+      <!-- Workday-style W mark -->
+      <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="18" cy="18" r="18" fill="#005cb9"/>
+        <path d="M8 12l4 12 4-8 4 8 4-12" stroke="#fff" stroke-width="2.8"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="header-info">
+      <div class="app-label">Workday &nbsp;·&nbsp; Absence Management</div>
+      <div class="app-title">My Time Off</div>
+    </div>
+    <div class="employee-pill">
+      <div class="employee-name" id="emp-name">Alex Johnson</div>
+      <div class="employee-meta" id="emp-meta">Restaurant Manager &nbsp;·&nbsp; #EMP-4821</div>
+    </div>
+  </div>
+
+  <!-- Balance cards -->
+  <div class="section">
+    <div class="section-title">Available Balances — <span id="balance-year">2025</span></div>
+    <div class="balance-grid">
+
+      <div class="balance-card vacation">
+        <div class="balance-type">Vacation</div>
+        <div class="balance-days" id="bal-vacation">12.5</div>
+        <div class="balance-sub">days remaining</div>
+        <div class="balance-bar-wrap">
+          <div class="balance-bar" id="bar-vacation" style="width: 62%"></div>
+        </div>
+      </div>
+
+      <div class="balance-card sick">
+        <div class="balance-type">Sick Leave</div>
+        <div class="balance-days" id="bal-sick">5</div>
+        <div class="balance-sub">days remaining</div>
+        <div class="balance-bar-wrap">
+          <div class="balance-bar" id="bar-sick" style="width: 50%"></div>
+        </div>
+      </div>
+
+      <div class="balance-card personal">
+        <div class="balance-type">Personal</div>
+        <div class="balance-days" id="bal-personal">3</div>
+        <div class="balance-sub">days remaining</div>
+        <div class="balance-bar-wrap">
+          <div class="balance-bar" id="bar-personal" style="width: 75%"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- Calendar strip -->
+  <div class="section">
+    <div class="section-title">This Week</div>
+    <div class="calendar-strip" id="calendar-strip"></div>
+    <div class="calendar-legend">
+      <div class="legend-item">
+        <div class="legend-dot today"></div>
+        <span>Today</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot absence"></div>
+        <span>Approved absence</span>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- Absence requests -->
+  <div class="section" style="padding-bottom: 8px;">
+    <div class="section-title">Recent Requests</div>
+    <table class="requests-table" id="requests-table">
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Dates</th>
+          <th>Duration</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="requests-body"></tbody>
+    </table>
+  </div>
+
+  <!-- Action row -->
+  <div class="actions-row">
+    <button class="btn-request" id="btn-request-absence">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="7.5" stroke="white" stroke-width="1.5"/>
+        <line x1="8" y1="4.5" x2="8" y2="11.5" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="4.5" y1="8" x2="11.5" y2="8" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      Request Absence
+    </button>
+    <span class="last-updated" id="last-updated"></span>
+  </div>
+
+  <!-- Footer -->
+  <div class="widget-footer">
+    <span class="last-updated" id="policy-note">Policy: Max 20 vacation days per year</span>
+    <div class="footer-right">
+      <span class="demo-badge">Demo</span>
+      <button class="refresh-btn" id="refresh-btn">↻ Refresh</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Request Absence Modal -->
+<div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-heading">
+  <div class="modal">
+    <div class="modal-title" id="modal-heading">Request Absence</div>
+
+    <div class="form-row">
+      <label class="form-label" for="absence-type">Absence Type</label>
+      <select class="form-select" id="absence-type">
+        <option value="vacation">Vacation</option>
+        <option value="sick">Sick Leave</option>
+        <option value="personal">Personal Day</option>
+        <option value="bereavement">Bereavement</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+
+    <div class="form-row-duo">
+      <div>
+        <label class="form-label" for="start-date">Start Date</label>
+        <input class="form-input" type="date" id="start-date" />
+      </div>
+      <div>
+        <label class="form-label" for="end-date">End Date</label>
+        <input class="form-input" type="date" id="end-date" />
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label class="form-label" for="absence-notes">Notes (optional)</label>
+      <input class="form-input" type="text" id="absence-notes" placeholder="Add a note for your manager…" />
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" id="btn-cancel">Cancel</button>
+      <button class="btn-submit" id="btn-submit">Submit Request</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast notification -->
+<div class="toast" id="toast">✔ Absence request submitted successfully!</div>
+
+<script>
+  /* ── Simulated data ── */
+  const EMPLOYEE = {
+    name: "Alex Johnson",
+    title: "Restaurant Manager",
+    id: "EMP-4821"
+  };
+
+  const BALANCES = {
+    vacation: { remaining: 12.5, total: 20 },
+    sick:     { remaining: 5,    total: 10 },
+    personal: { remaining: 3,    total: 4  }
+  };
+
+  /* Derive all demo dates relative to the current date so requests always
+     look realistic regardless of when the demo is run. */
+  (function seedRequestDates() {
+    const today = new Date();
+    const toISO = d => d.toISOString().split("T")[0];
+
+    const addDays = (base, n) => {
+      const d = new Date(base);
+      d.setDate(d.getDate() + n);
+      return d;
+    };
+
+    // Calendar absence: Wed–Thu of the current week (always visible)
+    const daysSinceMonday = (today.getDay() + 6) % 7;
+    const wed = addDays(today, 2 - daysSinceMonday);
+    const thu = addDays(today, 3 - daysSinceMonday);
+
+    // Historical approved requests: ~11 and ~4 months ago
+    const sickStart    = addDays(today, -335);
+    const personalStart = addDays(today, -120);
+
+    // Pending future request: starts ~10 weeks from now
+    const pendingStart = addDays(today,  70);
+    const pendingEnd   = addDays(today,  74);
+
+    window._DEMO_DATES = {
+      approvedStart:  toISO(wed),
+      approvedEnd:    toISO(thu),
+      sickDay:        toISO(sickStart),
+      personalDay:    toISO(personalStart),
+      pendingStart:   toISO(pendingStart),
+      pendingEnd:     toISO(pendingEnd),
+    };
+  })();
+
+  const D = window._DEMO_DATES;
+
+  const REQUESTS = [
+    {
+      type: "Vacation",
+      startDate: D.approvedStart,
+      endDate:   D.approvedEnd,
+      duration:  "2 days",
+      status:    "approved"
+    },
+    {
+      type: "Sick Leave",
+      startDate: D.sickDay,
+      endDate:   D.sickDay,
+      duration:  "1 day",
+      status:    "approved"
+    },
+    {
+      type: "Personal Day",
+      startDate: D.personalDay,
+      endDate:   D.personalDay,
+      duration:  "1 day",
+      status:    "approved"
+    },
+    {
+      type: "Vacation",
+      startDate: D.pendingStart,
+      endDate:   D.pendingEnd,
+      duration:  "5 days",
+      status:    "pending"
+    },
+  ];
+
+  /* ── Helpers ── */
+  const $ = id => document.getElementById(id);
+
+  const TOAST_HIDE_DELAY  = 3500;               // ms — matches showToast setTimeout
+  const TOAST_RESET_DELAY = TOAST_HIDE_DELAY + 100; // ms — reset toast text after it hides
+  const MS_PER_DAY        = 86_400_000;         // ms — milliseconds in one calendar day
+
+  function formatDate(d) {
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+
+  function formatDateYear(d) {
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  function isoToDate(iso) {
+    return new Date(iso + "T00:00:00");
+  }
+
+  function dateRangeLabel(startISO, endISO) {
+    const s = isoToDate(startISO);
+    const e = isoToDate(endISO);
+    if (startISO === endISO) return formatDateYear(s);
+    if (s.getFullYear() === e.getFullYear()) {
+      return `${formatDate(s)} – ${formatDate(e)}, ${s.getFullYear()}`;
+    }
+    return `${formatDateYear(s)} – ${formatDateYear(e)}`;
+  }
+
+  /* Build a Set of "MMM D" strings for all days spanned by approved requests. */
+  function buildAbsenceDateSet() {
+    const set = new Set();
+    REQUESTS.forEach(r => {
+      if (r.status !== "approved") return;
+      const s = isoToDate(r.startDate);
+      const e = isoToDate(r.endDate);
+      for (const d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+        set.add(formatDate(new Date(d)));
+      }
+    });
+    return set;
+  }
+
+  /* ── Populate header ── */
+  function renderHeader() {
+    $("emp-name").textContent = EMPLOYEE.name;
+    $("emp-meta").textContent = `${EMPLOYEE.title} · #${EMPLOYEE.id}`;
+    $("balance-year").textContent = new Date().getFullYear();
+  }
+
+  /* ── Populate balance bars ── */
+  function renderBalances() {
+    const keys = ["vacation", "sick", "personal"];
+    keys.forEach(key => {
+      const b = BALANCES[key];
+      const pct = Math.round((b.remaining / b.total) * 100);
+      $(`bal-${key}`).textContent = b.remaining;
+      $(`bar-${key}`).style.width = pct + "%";
+    });
+  }
+
+  /* ── Calendar strip (current week) ── */
+  function renderCalendar() {
+    const today = new Date();
+    const dow = today.getDay(); // 0 = Sun
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - ((dow + 6) % 7)); // Monday
+
+    const absenceDates = buildAbsenceDateSet();
+    const strip = $("calendar-strip");
+    strip.innerHTML = "";
+
+    const days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      const isToday = d.toDateString() === today.toDateString();
+      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+      const dateLabel = formatDate(d);
+      const isAbsence = absenceDates.has(dateLabel);
+
+      const cell = document.createElement("div");
+      cell.className = "cal-day" +
+        (isToday   ? " today"   : "") +
+        (isAbsence ? " absence" : "") +
+        (isWeekend && !isToday ? " weekend" : "");
+
+      cell.innerHTML = `<div class="dow">${days[i]}</div><div class="date-num">${d.getDate()}</div>`;
+      strip.appendChild(cell);
+    }
+  }
+
+  /* ── Requests table ── */
+  function renderRequests() {
+    const tbody = $("requests-body");
+    tbody.innerHTML = "";
+    REQUESTS.forEach(r => {
+      const datesLabel = dateRangeLabel(r.startDate, r.endDate);
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${r.type}</td>
+        <td>${datesLabel}</td>
+        <td>${r.duration}</td>
+        <td><span class="status-badge ${r.status}">
+          <span class="status-dot"></span>
+          ${r.status.charAt(0).toUpperCase() + r.status.slice(1)}
+        </span></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  /* ── Last-updated timestamp ── */
+  function renderTimestamp() {
+    const now = new Date();
+    const ts = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+    $("last-updated").textContent = `Last updated: ${ts}`;
+  }
+
+  /* ── Modal ── */
+  function openModal() {
+    // Pre-fill dates
+    const today = new Date();
+    const fmt = d => d.toISOString().split("T")[0];
+    $("start-date").value = fmt(today);
+    const nextDay = new Date(today);
+    nextDay.setDate(today.getDate() + 1);
+    $("end-date").value = fmt(nextDay);
+
+    $("modal-overlay").classList.add("open");
+  }
+
+  function closeModal() {
+    $("modal-overlay").classList.remove("open");
+  }
+
+  function submitRequest() {
+    const type  = $("absence-type").options[$("absence-type").selectedIndex].text;
+    const start = $("start-date").value;
+    const end   = $("end-date").value;
+
+    if (!start || !end) { alert("Please select start and end dates."); return; }
+    if (end < start)    { alert("End date must be on or after start date."); return; }
+
+    // Calculate duration
+    const ms = isoToDate(end) - isoToDate(start);
+    const days = Math.round(ms / MS_PER_DAY) + 1;
+    const durLabel = days === 1 ? "1 day" : `${days} days`;
+
+    // Add to table (top) using ISO dates for consistency
+    REQUESTS.unshift({ type, startDate: start, endDate: end, duration: durLabel, status: "pending" });
+    renderRequests();
+
+    closeModal();
+    showToast();
+    renderTimestamp();
+  }
+
+  /* ── Toast ── */
+  function showToast() {
+    const t = $("toast");
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), TOAST_HIDE_DELAY);
+  }
+
+  /* ── Event listeners ── */
+  $("btn-request-absence").addEventListener("click", openModal);
+  $("btn-cancel").addEventListener("click", closeModal);
+  $("btn-submit").addEventListener("click", submitRequest);
+  $("refresh-btn").addEventListener("click", () => {
+    renderCalendar();
+    renderTimestamp();
+    showToast();
+    $("toast").textContent = "✔ Data refreshed.";
+    setTimeout(() => { $("toast").textContent = "✔ Absence request submitted successfully!"; }, TOAST_RESET_DELAY);
+  });
+
+  $("modal-overlay").addEventListener("click", e => {
+    if (e.target === $("modal-overlay")) closeModal();
+  });
+
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") closeModal();
+  });
+
+  /* ── Init ── */
+  renderHeader();
+  renderBalances();
+  renderCalendar();
+  renderRequests();
+  renderTimestamp();
+</script>
+</body>
+</html>
