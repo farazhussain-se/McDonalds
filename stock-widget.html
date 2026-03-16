@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MCD Stock Widget</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f2f5;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 32px 16px;
+    }
+
+    .widget {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      width: 100%;
+      max-width: 700px;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    .widget-header {
+      background: linear-gradient(135deg, #da291c 0%, #c8102e 100%);
+      color: #fff;
+      padding: 22px 28px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .logo {
+      width: 52px;
+      height: 52px;
+      background: #ffbc0d;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      font-weight: 900;
+      color: #da291c;
+      flex-shrink: 0;
+      letter-spacing: -2px;
+      user-select: none;
+    }
+
+    .header-info { flex: 1; }
+
+    .ticker {
+      font-size: 12px;
+      font-weight: 700;
+      opacity: 0.80;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+    }
+
+    .company-name {
+      font-size: 19px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .price-block { text-align: right; }
+
+    #current-price {
+      font-size: 34px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    #price-change {
+      font-size: 14px;
+      font-weight: 600;
+      margin-top: 5px;
+    }
+
+    .up   { color: #6cff9e; }
+    .down { color: #ffb3ae; }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-bottom: 1px solid #efefef;
+    }
+
+    .stat {
+      padding: 13px 12px;
+      text-align: center;
+      border-right: 1px solid #efefef;
+    }
+    .stat:last-child { border-right: none; }
+
+    .stat-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.9px;
+      text-transform: uppercase;
+      color: #999;
+    }
+
+    .stat-value {
+      font-size: 15px;
+      font-weight: 700;
+      color: #111;
+      margin-top: 4px;
+    }
+
+    /* ── Chart area ── */
+    .chart-area {
+      padding: 18px 24px 4px;
+    }
+
+    .chart-controls {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .range-btn {
+      padding: 5px 13px;
+      border-radius: 20px;
+      border: 1.5px solid #ddd;
+      background: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      color: #555;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .range-btn.active {
+      background: #da291c;
+      border-color: #da291c;
+      color: #fff;
+    }
+
+    .range-btn:hover:not(.active) {
+      border-color: #da291c;
+      color: #da291c;
+    }
+
+    /* SVG chart */
+    #chart-svg {
+      width: 100%;
+      height: 220px;
+      display: block;
+      overflow: visible;
+    }
+
+    /* Tooltip */
+    #chart-tooltip {
+      position: absolute;
+      background: rgba(0,0,0,0.78);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 6px;
+      pointer-events: none;
+      display: none;
+      white-space: nowrap;
+      z-index: 10;
+    }
+
+    .chart-wrap {
+      position: relative;
+    }
+
+    /* ── Footer ── */
+    .widget-footer {
+      padding: 10px 24px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .last-updated {
+      font-size: 11px;
+      color: #bbb;
+    }
+
+    .demo-badge {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: #bbb;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 2px 6px;
+    }
+
+    .refresh-btn {
+      font-size: 12px;
+      font-weight: 700;
+      color: #da291c;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+
+    .refresh-btn:hover { background: #fff0f0; }
+
+    .spinner {
+      display: inline-block;
+      width: 11px;
+      height: 11px;
+      border: 2px solid #da291c;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 3px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .footer-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body>
+<div class="widget">
+
+  <!-- Header -->
+  <div class="widget-header">
+    <div class="logo">M</div>
+    <div class="header-info">
+      <div class="ticker">NYSE &nbsp;·&nbsp; MCD</div>
+      <div class="company-name">McDonald's Corp</div>
+    </div>
+    <div class="price-block">
+      <div id="current-price">—</div>
+      <div id="price-change">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Stats bar -->
+  <div class="stats-bar">
+    <div class="stat">
+      <div class="stat-label">Open</div>
+      <div class="stat-value" id="stat-open">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">High</div>
+      <div class="stat-value" id="stat-high">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Low</div>
+      <div class="stat-value" id="stat-low">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Prev Close</div>
+      <div class="stat-value" id="stat-prev">—</div>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="chart-area">
+    <div class="chart-controls">
+      <button class="range-btn" data-range="1d">1D</button>
+      <button class="range-btn active" data-range="1w">1W</button>
+      <button class="range-btn" data-range="1m">1M</button>
+      <button class="range-btn" data-range="3m">3M</button>
+      <button class="range-btn" data-range="1y">1Y</button>
+      <button class="range-btn" data-range="5y">5Y</button>
+    </div>
+    <div class="chart-wrap">
+      <svg id="chart-svg" viewBox="0 0 650 220" preserveAspectRatio="none"></svg>
+      <div id="chart-tooltip"></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="widget-footer">
+    <span class="last-updated" id="last-updated">—</span>
+    <div class="footer-right">
+      <span class="demo-badge" id="demo-badge" style="display:none">demo data</span>
+      <button class="refresh-btn" id="refresh-btn" onclick="refresh()">↻ Refresh</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════
+   REALISTIC MOCK DATA (used when live API fails)
+   Prices loosely based on MCD historical range.
+   ═══════════════════════════════════════════════ */
+const MOCK = (() => {
+  function gen(start, days, base, volatility) {
+    const now  = Date.now();
+    const out  = [];
+    let price  = base;
+    for (let i = days; i >= 0; i--) {
+      const ts = Math.round((now - i * 24 * 3600 * 1000) / 1000);
+      price += (Math.random() - 0.49) * volatility;
+      price  = Math.max(price, base * 0.85);
+      out.push({ t: ts, c: +price.toFixed(2) });
+    }
+    return out;
+  }
+
+  const base = 299.50;
+  return {
+    quote: {
+      price: 302.18,
+      prev:  295.76,
+      open:  296.40,
+      high:  303.55,
+      low:   295.10,
+    },
+    "1d": (() => {
+      const baseTs = new Date().setHours(9, 30, 0, 0);
+      const pts  = [];
+      let p = 296.40;
+      for (let m = 0; m <= 390; m += 5) {
+        p += (Math.random() - 0.49) * 1.2;
+        pts.push({
+          t: Math.round((baseTs + m * 60_000) / 1000),
+          c: +p.toFixed(2),
+        });
+      }
+      return pts;
+    })(),
+    "1w": gen(0, 7,  base, 2.5),
+    "1m": gen(0, 30, base, 3),
+    "3m": gen(0, 90, base - 10, 4),
+    "1y": gen(0, 365, base - 30, 5),
+    "5y": gen(0, 365 * 5, base - 80, 7),
+  };
+})();
+
+/* ═══════════════════════════════════════════════
+   CONFIG
+   ═══════════════════════════════════════════════ */
+const SYMBOL   = "MCD";
+const YF_BASE  = "https://query1.finance.yahoo.com";
+
+const RANGE_MAP = {
+  "1d": { interval: "5m",  range: "1d"  },
+  "1w": { interval: "60m", range: "5d"  },
+  "1m": { interval: "1d",  range: "1mo" },
+  "3m": { interval: "1d",  range: "3mo" },
+  "1y": { interval: "1wk", range: "1y"  },
+  "5y": { interval: "1mo", range: "5y"  },
+};
+
+let activeRange = "1w";
+let isUp        = true;
+let usingDemo   = false;
+
+/* ═══════════════════════════════════════════════
+   SVG CHART RENDERER
+   ═══════════════════════════════════════════════ */
+const SVG_W = 650, SVG_H = 220, PAD = { top: 12, bottom: 28, left: 8, right: 50 };
+
+function drawChart(points, range) {
+  const svg = document.getElementById("chart-svg");
+  svg.innerHTML = "";
+
+  if (!points || points.length < 2) {
+    svg.innerHTML = `<text x="325" y="110" text-anchor="middle" fill="#ccc" font-size="14">No data</text>`;
+    return;
+  }
+
+  const W   = SVG_W - PAD.left - PAD.right;
+  const H   = SVG_H - PAD.top  - PAD.bottom;
+  const vals = points.map(p => p.c);
+  const min  = Math.min(...vals);
+  const max  = Math.max(...vals);
+  const span = max - min || 1;
+
+  const xOf = i => PAD.left + (i / (points.length - 1)) * W;
+  const yOf = v => PAD.top  + H - ((v - min) / span) * H;
+
+  // Color based on first vs last price
+  const color   = points[points.length - 1].c >= points[0].c ? "#22c55e" : "#ef4444";
+  const fillClr = points[points.length - 1].c >= points[0].c
+    ? "rgba(34,197,94,0.10)" : "rgba(239,68,68,0.10)";
+
+  const ns   = "http://www.w3.org/2000/svg";
+  const mkEl = tag => document.createElementNS(ns, tag);
+
+  // Defs for gradient fill
+  const defs   = mkEl("defs");
+  const gradId = "mcd-grad";
+  const grad   = mkEl("linearGradient");
+  grad.setAttribute("id", gradId);
+  grad.setAttribute("x1","0"); grad.setAttribute("y1","0");
+  grad.setAttribute("x2","0"); grad.setAttribute("y2","1");
+  const s1 = mkEl("stop");
+  s1.setAttribute("offset","0%");
+  s1.setAttribute("stop-color", color);
+  s1.setAttribute("stop-opacity","0.20");
+  const s2 = mkEl("stop");
+  s2.setAttribute("offset","100%");
+  s2.setAttribute("stop-color", color);
+  s2.setAttribute("stop-opacity","0");
+  grad.appendChild(s1); grad.appendChild(s2);
+  defs.appendChild(grad); svg.appendChild(defs);
+
+  // Build path data
+  let lineD = "", fillD = "";
+  points.forEach((p, i) => {
+    const x = xOf(i), y = yOf(p.c);
+    if (i === 0) { lineD += `M${x},${y}`; fillD += `M${x},${SVG_H - PAD.bottom} L${x},${y}`; }
+    else         { lineD += ` L${x},${y}`; fillD += ` L${x},${y}`; }
+  });
+  fillD += ` L${xOf(points.length - 1)},${SVG_H - PAD.bottom} Z`;
+
+  const fillEl = mkEl("path");
+  fillEl.setAttribute("d", fillD);
+  fillEl.setAttribute("fill", `url(#${gradId})`);
+  svg.appendChild(fillEl);
+
+  const lineEl = mkEl("path");
+  lineEl.setAttribute("d", lineD);
+  lineEl.setAttribute("fill", "none");
+  lineEl.setAttribute("stroke", color);
+  lineEl.setAttribute("stroke-width", "2");
+  lineEl.setAttribute("stroke-linejoin", "round");
+  svg.appendChild(lineEl);
+
+  // Y-axis tick labels (right side)
+  const ticks = 4;
+  for (let i = 0; i <= ticks; i++) {
+    const v = min + (i / ticks) * span;
+    const y = yOf(v);
+    const t = mkEl("text");
+    t.setAttribute("x", SVG_W - PAD.right + 6);
+    t.setAttribute("y", y + 4);
+    t.setAttribute("fill", "#aaa");
+    t.setAttribute("font-size", "10");
+    t.setAttribute("font-family", "inherit");
+    t.textContent = "$" + v.toFixed(0);
+    svg.appendChild(t);
+
+    // Horizontal gridline
+    const line = mkEl("line");
+    line.setAttribute("x1", PAD.left);
+    line.setAttribute("y1", y);
+    line.setAttribute("x2", SVG_W - PAD.right);
+    line.setAttribute("y2", y);
+    line.setAttribute("stroke", "#f0f0f0");
+    line.setAttribute("stroke-width", "1");
+    svg.insertBefore(line, fillEl);
+  }
+
+  // X-axis labels
+  const xTicks = Math.min(6, points.length - 1);
+  for (let i = 0; i <= xTicks; i++) {
+    const idx = Math.round((i / xTicks) * (points.length - 1));
+    const x   = xOf(idx);
+    const t   = mkEl("text");
+    t.setAttribute("x", x);
+    t.setAttribute("y", SVG_H - 6);
+    t.setAttribute("text-anchor", "middle");
+    t.setAttribute("fill", "#aaa");
+    t.setAttribute("font-size", "10");
+    t.setAttribute("font-family", "inherit");
+    t.textContent = labelForRange(points[idx].t, range);
+    svg.appendChild(t);
+  }
+
+  // Hover overlay (transparent rect + crosshair + tooltip)
+  const tooltip = document.getElementById("chart-tooltip");
+  const crossV  = mkEl("line");
+  crossV.setAttribute("x1", 0); crossV.setAttribute("x2", 0);
+  crossV.setAttribute("y1", PAD.top); crossV.setAttribute("y2", SVG_H - PAD.bottom);
+  crossV.setAttribute("stroke", "#999");
+  crossV.setAttribute("stroke-width", "1");
+  crossV.setAttribute("stroke-dasharray", "4 3");
+  crossV.style.display = "none";
+  svg.appendChild(crossV);
+
+  const dot = mkEl("circle");
+  dot.setAttribute("r", "4");
+  dot.setAttribute("fill", color);
+  dot.setAttribute("stroke", "#fff");
+  dot.setAttribute("stroke-width", "2");
+  dot.style.display = "none";
+  svg.appendChild(dot);
+
+  const overlay = mkEl("rect");
+  overlay.setAttribute("x", PAD.left);
+  overlay.setAttribute("y", PAD.top);
+  overlay.setAttribute("width", W);
+  overlay.setAttribute("height", H);
+  overlay.setAttribute("fill", "transparent");
+  overlay.setAttribute("cursor", "crosshair");
+  svg.appendChild(overlay);
+
+  overlay.addEventListener("mousemove", e => {
+    const rect = svg.getBoundingClientRect();
+    const scaleX = SVG_W / rect.width;
+    const mx  = (e.clientX - rect.left) * scaleX - PAD.left;
+    const idx = Math.max(0, Math.min(points.length - 1,
+                  Math.round((mx / W) * (points.length - 1))));
+    const p   = points[idx];
+    const cx  = xOf(idx), cy = yOf(p.c);
+
+    crossV.setAttribute("x1", cx); crossV.setAttribute("x2", cx);
+    crossV.style.display = "";
+    dot.setAttribute("cx", cx); dot.setAttribute("cy", cy);
+    dot.style.display = "";
+
+    tooltip.textContent = labelForRange(p.t, range) + "  $" + p.c.toFixed(2);
+    tooltip.style.display = "block";
+    // Position relative to the chart-wrap container
+    const TOOLTIP_WIDTH = 140;
+    const wrap  = svg.closest(".chart-wrap");
+    const wRect = wrap.getBoundingClientRect();
+    let left    = e.clientX - wRect.left + 12;
+    if (left + TOOLTIP_WIDTH > wRect.width) left = e.clientX - wRect.left - (TOOLTIP_WIDTH + 5);
+    tooltip.style.left = left + "px";
+    tooltip.style.top  = (e.clientY - wRect.top - 20) + "px";
+  });
+
+  overlay.addEventListener("mouseleave", () => {
+    crossV.style.display = "none";
+    dot.style.display    = "none";
+    tooltip.style.display = "none";
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   FORMAT HELPERS
+   ═══════════════════════════════════════════════ */
+function fmt(n)  { return n != null ? "$" + n.toFixed(2) : "—"; }
+function fmtN(n) { return n != null ? n.toFixed(2) : "—"; }
+
+function labelForRange(ts, range) {
+  const d = new Date(ts * 1000);
+  if (range === "1d") {
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+  if (range === "1w") {
+    return d.toLocaleDateString([], { month: "short", day: "numeric" });
+  }
+  if (range === "5y") {
+    return d.toLocaleDateString([], { month: "short", year: "2-digit" });
+  }
+  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
+/* ═══════════════════════════════════════════════
+   LIVE DATA FETCH (Yahoo Finance public API)
+   ═══════════════════════════════════════════════ */
+async function fetchQuote() {
+  const url      = `${YF_BASE}/v8/finance/spark?symbols=${SYMBOL}&range=1d&interval=5m&indicators=close&includeTimestamps=false`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("HTTP " + response.status);
+  const data = await response.json();
+  return data.spark.result[0].response[0].meta;
+}
+
+async function fetchHistory(range) {
+  const { interval, range: apiRange } = RANGE_MAP[range];
+  const url      = `${YF_BASE}/v8/finance/chart/${SYMBOL}?interval=${interval}&range=${apiRange}`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("HTTP " + response.status);
+  const data = await response.json();
+  return data.chart.result[0];
+}
+
+/* ═══════════════════════════════════════════════
+   RENDER QUOTE
+   ═══════════════════════════════════════════════ */
+function renderQuote(price, prev, open, high, low) {
+  const change = price - prev;
+  const pct    = (change / prev) * 100;
+  isUp         = change >= 0;
+
+  document.getElementById("current-price").textContent = fmt(price);
+
+  const sign = isUp ? "+" : "";
+  const cls  = isUp ? "up" : "down";
+  document.getElementById("price-change").innerHTML =
+    `<span class="${cls}">${sign}${fmtN(change)} (${sign}${pct.toFixed(2)}%)</span>`;
+
+  document.getElementById("stat-open").textContent = fmt(open);
+  document.getElementById("stat-high").textContent = fmt(high);
+  document.getElementById("stat-low").textContent  = fmt(low);
+  document.getElementById("stat-prev").textContent = fmt(prev);
+}
+
+/* ═══════════════════════════════════════════════
+   LOAD  (live → fallback to demo)
+   ═══════════════════════════════════════════════ */
+async function loadQuote() {
+  try {
+    const meta = await fetchQuote();
+    const prev = meta.previousClose ?? meta.chartPreviousClose;
+    renderQuote(meta.regularMarketPrice, prev,
+                meta.regularMarketOpen, meta.regularMarketDayHigh, meta.regularMarketDayLow);
+    usingDemo = false;
+  } catch {
+    // Fallback to mock data
+    const q = MOCK.quote;
+    renderQuote(q.price, q.prev, q.open, q.high, q.low);
+    usingDemo = true;
+  }
+  document.getElementById("demo-badge").style.display = usingDemo ? "" : "none";
+}
+
+async function loadHistory(range) {
+  let points;
+  try {
+    const result = await fetchHistory(range);
+    const ts     = result.timestamp;
+    const closes = result.indicators.quote[0].close;
+    points = [];
+    ts.forEach((t, i) => {
+      if (closes[i] != null) points.push({ t, c: closes[i] });
+    });
+    usingDemo = false;
+  } catch {
+    points    = MOCK[range] || MOCK["1w"];
+    usingDemo = true;
+  }
+  document.getElementById("demo-badge").style.display = usingDemo ? "" : "none";
+  drawChart(points, range);
+}
+
+/* ═══════════════════════════════════════════════
+   UI HELPERS
+   ═══════════════════════════════════════════════ */
+function setLoading(on) {
+  const btn = document.getElementById("refresh-btn");
+  btn.innerHTML = on ? '<span class="spinner"></span>Loading' : "↻ Refresh";
+  btn.disabled  = on;
+}
+
+function setLastUpdated() {
+  document.getElementById("last-updated").textContent =
+    "Updated " + new Date().toLocaleTimeString();
+}
+
+/* ═══════════════════════════════════════════════
+   RANGE BUTTONS
+   ═══════════════════════════════════════════════ */
+document.querySelectorAll(".range-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".range-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    activeRange = btn.dataset.range;
+    loadHistory(activeRange);
+  });
+});
+
+/* ═══════════════════════════════════════════════
+   MAIN REFRESH
+   ═══════════════════════════════════════════════ */
+async function refresh() {
+  setLoading(true);
+  await Promise.all([loadQuote(), loadHistory(activeRange)]);
+  setLastUpdated();
+  setLoading(false);
+}
+
+/* Boot + auto-refresh every 60 s */
+refresh();
+const autoRefreshInterval = setInterval(refresh, 60_000);
+</script>
+</body>
+</html>
