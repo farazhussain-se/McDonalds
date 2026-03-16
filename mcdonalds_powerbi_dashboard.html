@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>McDonald's Sales Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; color: #252423; width: 960px; height: 660px; overflow: hidden; }
+
+  /* TOP BAR */
+  .topbar {
+    background: #252423;
+    padding: 0 16px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 12px; }
+  .topbar-logo { font-size: 20px; font-weight: 900; color: #FFBC0D; }
+  .topbar-title { color: #fff; font-size: 12px; font-weight: 600; letter-spacing: 0.3px; }
+  .topbar-tabs { display: flex; gap: 2px; }
+  .topbar-tab {
+    padding: 4px 12px; font-size: 11px; font-weight: 600;
+    color: #aaa; border: none; background: transparent; cursor: pointer; border-radius: 3px;
+  }
+  .topbar-tab.active { background: #FFBC0D; color: #252423; }
+  .topbar-right { color: #aaa; font-size: 10px; }
+
+  /* SUBBAR */
+  .subbar {
+    background: #f3f2f1;
+    border-bottom: 1px solid #e1dfdd;
+    padding: 6px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .subbar-title { font-size: 13px; font-weight: 700; color: #252423; }
+  .subbar-sub { font-size: 10px; color: #605e5c; margin-top: 1px; }
+  .filter-group { display: flex; gap: 6px; align-items: center; }
+  .filter-label { color: #605e5c; font-size: 10px; }
+  .filter-btn {
+    background: #fff; color: #252423; border: 1px solid #8a8886;
+    padding: 2px 10px; border-radius: 2px; font-size: 10px; font-weight: 600; cursor: pointer;
+  }
+  .filter-btn.active { background: #0078d4; color: #fff; border-color: #0078d4; }
+
+  /* KPI ROW */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 8px 16px;
+    background: #fff;
+  }
+  .kpi-tile {
+    background: #fff;
+    border: 1px solid #e1dfdd;
+    border-top: 3px solid #0078d4;
+    padding: 8px 12px;
+    border-radius: 2px;
+  }
+  .kpi-tile.gold { border-top-color: #FFBC0D; }
+  .kpi-tile.red { border-top-color: #d13438; }
+  .kpi-tile.green { border-top-color: #107c10; }
+  .kpi-tile.blue { border-top-color: #0078d4; }
+  .kpi-label { font-size: 10px; font-weight: 600; color: #605e5c; text-transform: uppercase; letter-spacing: 0.5px; }
+  .kpi-value { font-size: 22px; font-weight: 700; color: #252423; margin: 3px 0 1px; line-height: 1; }
+  .kpi-delta { font-size: 10px; font-weight: 600; }
+  .kpi-delta.up { color: #107c10; }
+  .kpi-delta.neutral { color: #605e5c; }
+
+  /* MAIN GRID */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 0.95fr 0.95fr;
+    gap: 8px;
+    padding: 0 16px 8px 16px;
+  }
+  .bottom-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1.9fr;
+    gap: 8px;
+    padding: 0 16px 8px 16px;
+  }
+  .chart-card {
+    background: #fff;
+    border: 1px solid #e1dfdd;
+    border-radius: 2px;
+    padding: 10px 12px 8px 12px;
+  }
+  .chart-title {
+    font-size: 10px; font-weight: 700; color: #252423;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 8px; padding-bottom: 5px;
+    border-bottom: 1px solid #e1dfdd;
+  }
+
+  /* TABLE */
+  .tbl { width: 100%; border-collapse: collapse; font-size: 10px; }
+  .tbl thead tr { background: #252423; }
+  .tbl thead th { color: #FFBC0D; padding: 5px 8px; text-align: left; font-size: 10px; font-weight: 700; white-space: nowrap; }
+  .tbl tbody tr { border-bottom: 1px solid #f3f2f1; }
+  .tbl tbody tr:hover { background: #faf9f8; }
+  .tbl tbody td { padding: 4px 8px; color: #252423; }
+  .tbl .grp td { background: #f3f2f1; font-weight: 700; font-size: 10px; color: #605e5c; text-transform: uppercase; letter-spacing: 0.4px; }
+  .won { color: #252423; font-weight: 700; }
+  .pipe { color: #d13438; font-weight: 700; }
+  .badge { display:inline-block; padding:1px 7px; border-radius:10px; font-size:9px; font-weight:700; }
+  .badge.green { background:#dff6dd; color:#107c10; }
+  .badge.yellow { background:#fff4ce; color:#835c00; }
+  .total-row td { background: #f3f2f1; font-weight: 800; font-size: 11px; border-top: 2px solid #e1dfdd; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="topbar-logo">M</span>
+    <span class="topbar-title">REGIONAL SALES — GLOBAL OVERVIEW</span>
+  </div>
+  <div class="topbar-tabs">
+    <button class="topbar-tab active">Overview</button>
+    <button class="topbar-tab">Markets</button>
+    <button class="topbar-tab">Segments</button>
+    <button class="topbar-tab">Digital</button>
+  </div>
+  <div class="topbar-right">Q1 2026 &nbsp;|&nbsp; Mar 15, 2026</div>
+</div>
+
+<!-- SUBBAR -->
+<div class="subbar">
+  <div>
+    <div class="subbar-title">Sales Overview</div>
+    <div class="subbar-sub">Accelerating the Arches · All figures USD Billions · Systemwide Sales</div>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">Market:</span>
+    <button class="filter-btn active">All</button>
+    <button class="filter-btn">US</button>
+    <button class="filter-btn">IOM</button>
+    <button class="filter-btn">APMEA</button>
+    <button class="filter-btn">Europe</button>
+  </div>
+</div>
+
+<!-- KPI ROW -->
+<div class="kpi-row">
+  <div class="kpi-tile gold">
+    <div class="kpi-label">Revenue Won</div>
+    <div class="kpi-value">$20.29B</div>
+    <div class="kpi-delta up">▲ 8.4% vs Q1 2025</div>
+  </div>
+  <div class="kpi-tile blue">
+    <div class="kpi-label">Qualified Pipeline</div>
+    <div class="kpi-value">$28.40B</div>
+    <div class="kpi-delta up">▲ 11.2% vs Q1 2025</div>
+  </div>
+  <div class="kpi-tile red">
+    <div class="kpi-label">Revenue Goal</div>
+    <div class="kpi-value">$23.00B</div>
+    <div class="kpi-delta neutral">FY 2026 Target</div>
+  </div>
+  <div class="kpi-tile green">
+    <div class="kpi-label">Forecast</div>
+    <div class="kpi-value">131%</div>
+    <div class="kpi-delta up">▲ Exceeding Plan</div>
+  </div>
+</div>
+
+<!-- CHART ROW -->
+<div class="main-grid">
+  <div class="chart-card">
+    <div class="chart-title">Revenue by Market ($B)</div>
+    <canvas id="marketChart" height="120"></canvas>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Channel Mix ($B)</div>
+    <canvas id="channelChart" height="120"></canvas>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Digital Penetration (%)</div>
+    <canvas id="digitalChart" height="120"></canvas>
+  </div>
+</div>
+
+<!-- BOTTOM ROW -->
+<div class="bottom-grid">
+  <div class="chart-card">
+    <div class="chart-title">Consumer Journey Funnel</div>
+    <canvas id="funnelChart" height="130"></canvas>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Menu Segment Performance</div>
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Segment</th>
+          <th>Revenue Won</th>
+          <th>Pipeline</th>
+          <th>Forecast %</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="grp"><td colspan="5">Core Burgers</td></tr>
+        <tr><td>Big Mac Platform</td><td class="won">$3.21B</td><td class="pipe">$4.85B</td><td>132%</td><td><span class="badge green">On Track</span></td></tr>
+        <tr><td>Quarter Pounder</td><td class="won">$2.87B</td><td class="pipe">$3.92B</td><td>128%</td><td><span class="badge green">On Track</span></td></tr>
+        <tr class="grp"><td colspan="5">Chicken</td></tr>
+        <tr><td>Crispy Chicken</td><td class="won">$2.54B</td><td class="pipe">$3.67B</td><td>141%</td><td><span class="badge green">Exceeding</span></td></tr>
+        <tr><td>McNuggets</td><td class="won">$2.18B</td><td class="pipe">$2.98B</td><td>135%</td><td><span class="badge green">Exceeding</span></td></tr>
+        <tr class="grp"><td colspan="5">Digital & Delivery</td></tr>
+        <tr><td>McDelivery App</td><td class="won">$2.12B</td><td class="pipe">$3.20B</td><td>138%</td><td><span class="badge green">Exceeding</span></td></tr>
+        <tr><td>3P Delivery</td><td class="won">$1.75B</td><td class="pipe">$2.45B</td><td>124%</td><td><span class="badge green">On Track</span></td></tr>
+        <tr class="grp"><td colspan="5">McCafé</td></tr>
+        <tr><td>Premium Coffee</td><td class="won">$1.43B</td><td class="pipe">$2.10B</td><td>119%</td><td><span class="badge yellow">Monitor</span></td></tr>
+        <tr class="total-row"><td><b>TOTAL</b></td><td class="won">$20.29B</td><td class="pipe">$28.40B</td><td><b>131%</b></td><td><span class="badge green">On Track</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const pbi = {
+  blue:   '#0078d4',
+  gold:   '#FFBC0D',
+  red:    '#d13438',
+  green:  '#107c10',
+  purple: '#8764b8',
+  teal:   '#00b4d2',
+  dark:   '#252423',
+  gray:   '#605e5c',
+  grid:   'rgba(0,0,0,0.06)'
+};
+const tf = { family:"'Segoe UI',Arial,sans-serif", size: 10, color: pbi.dark };
+
+// Market
+new Chart(document.getElementById('marketChart'), {
+  type:'bar',
+  data:{
+    labels:['US','IOM','APMEA','Europe','China'],
+    datasets:[
+      {label:'Revenue Won', data:[5.82,3.21,4.45,3.87,2.94], backgroundColor: pbi.blue, borderRadius:2},
+      {label:'Pipeline',    data:[8.10,4.60,6.20,5.40,4.10], backgroundColor: pbi.gold, borderRadius:2}
+    ]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:true,
+    plugins:{legend:{position:'bottom', labels:{font:tf, boxWidth:10, padding:6}}},
+    scales:{
+      x:{grid:{display:false}, ticks:{font:tf}},
+      y:{grid:{color:pbi.grid}, ticks:{font:tf, callback:v=>'$'+v+'B'}}
+    }
+  }
+});
+
+// Channel
+new Chart(document.getElementById('channelChart'), {
+  type:'bar',
+  data:{
+    labels:['Digital/App','Drive-Thru','Dine-In','Delivery','McCafé'],
+    datasets:[{
+      label:'Revenue ($B)',
+      data:[10.52,8.34,4.21,3.87,2.43],
+      backgroundColor:[pbi.blue, pbi.gold, pbi.purple, pbi.teal, pbi.red],
+      borderRadius:2
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:true,
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{grid:{display:false}, ticks:{font:{size:9}}},
+      y:{grid:{color:pbi.grid}, ticks:{font:tf, callback:v=>'$'+v+'B'}}
+    }
+  }
+});
+
+// Digital
+new Chart(document.getElementById('digitalChart'), {
+  type:'line',
+  data:{
+    labels:["Q1'25","Q2'25","Q3'25","Q4'25","Q1'26"],
+    datasets:[{
+      label:'Digital %',
+      data:[38,41,44,47,51],
+      borderColor: pbi.blue, backgroundColor:'rgba(0,120,212,0.08)',
+      pointBackgroundColor: pbi.blue, pointRadius:4, borderWidth:2,
+      fill:true, tension:0.3
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:true,
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{grid:{display:false}, ticks:{font:tf}},
+      y:{grid:{color:pbi.grid}, ticks:{font:tf, callback:v=>v+'%'}, min:30, max:60}
+    }
+  }
+});
+
+// Funnel
+new Chart(document.getElementById('funnelChart'), {
+  type:'bar',
+  data:{
+    labels:['Awareness','Consideration','Preference','Purchase'],
+    datasets:[{
+      label:'%',
+      data:[84.2,61.5,43.8,29.3],
+      backgroundColor:[pbi.blue,'#2b88d8','#69afe5','#c7e0f4'],
+      borderRadius:2
+    }]
+  },
+  options:{
+    indexAxis:'y', responsive:true, maintainAspectRatio:true,
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{grid:{color:pbi.grid}, ticks:{font:tf, callback:v=>v+'%'}, max:100},
+      y:{grid:{display:false}, ticks:{font:{size:10, weight:'bold'}}}
+    }
+  }
+});
+</script>
+</body>
+</html>
