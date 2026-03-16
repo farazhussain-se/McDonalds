@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>McDonald's — Global Sales Performance</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #F5F5F0; color: #27251F; }
+
+  /* TOP NAV */
+  .topnav {
+    background: #27251F;
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+  }
+  .topnav-left { display: flex; align-items: center; gap: 20px; }
+  .topnav-logo { font-size: 28px; font-weight: 900; color: #FFBC0D; letter-spacing: -1px; }
+  .topnav-title { color: #fff; font-size: 15px; font-weight: 600; letter-spacing: 0.5px; }
+  .topnav-tabs { display: flex; gap: 4px; }
+  .topnav-tab {
+    padding: 6px 18px; border-radius: 4px; font-size: 13px; font-weight: 600;
+    cursor: pointer; color: #aaa; border: none; background: transparent;
+  }
+  .topnav-tab.active { background: #FFBC0D; color: #27251F; }
+  .topnav-right { color: #aaa; font-size: 12px; }
+
+  /* SUBHEADER */
+  .subheader {
+    background: #3D3B35;
+    padding: 10px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .subheader-title { color: #fff; font-size: 18px; font-weight: 800; letter-spacing: 0.3px; }
+  .subheader-sub { color: #FFBC0D; font-size: 12px; font-weight: 600; margin-top: 2px; }
+  .filter-group { display: flex; gap: 10px; align-items: center; }
+  .filter-label { color: #aaa; font-size: 12px; }
+  .filter-btn {
+    background: #27251F; color: #FFBC0D; border: 1px solid #FFBC0D;
+    padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer;
+  }
+  .filter-btn.active { background: #FFBC0D; color: #27251F; }
+
+  /* KPI TILES */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    padding: 20px 32px 0 32px;
+  }
+  .kpi-tile {
+    background: #fff;
+    border-radius: 8px;
+    padding: 18px 22px;
+    border-left: 5px solid #FFBC0D;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  }
+  .kpi-label { font-size: 11px; font-weight: 700; color: #8C8C8C; text-transform: uppercase; letter-spacing: 0.8px; }
+  .kpi-value { font-size: 30px; font-weight: 900; color: #27251F; margin: 6px 0 2px; }
+  .kpi-delta { font-size: 12px; font-weight: 700; }
+  .kpi-delta.up { color: #2ECC71; }
+  .kpi-delta.neutral { color: #8C8C8C; }
+  .kpi-tile.red { border-left-color: #DB0007; }
+  .kpi-tile.green { border-left-color: #2ECC71; }
+  .kpi-tile.blue { border-left-color: #2980B9; }
+
+  /* CHART GRID */
+  .chart-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr 0.9fr;
+    gap: 16px;
+    padding: 16px 32px 0 32px;
+  }
+  .chart-grid-bottom {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 16px;
+    padding: 16px 32px 0 32px;
+  }
+  .chart-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 18px 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  }
+  .chart-title {
+    font-size: 12px; font-weight: 800; color: #27251F;
+    text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 14px;
+    border-bottom: 2px solid #FFBC0D; padding-bottom: 8px;
+  }
+  canvas { width: 100% !important; }
+
+  /* TABLE */
+  .table-section { padding: 16px 32px 24px 32px; }
+  .table-card {
+    background: #fff; border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07); overflow: hidden;
+  }
+  .table-header {
+    background: #27251F; display: grid;
+    grid-template-columns: 2fr 1.2fr 1.4fr 1fr 1fr;
+    padding: 12px 20px;
+  }
+  .table-header span { color: #FFBC0D; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; }
+  .table-row {
+    display: grid;
+    grid-template-columns: 2fr 1.2fr 1.4fr 1fr 1fr;
+    padding: 10px 20px;
+    border-bottom: 1px solid #F0F0EA;
+    align-items: center;
+  }
+  .table-row:hover { background: #FFFBEE; }
+  .table-row span { font-size: 13px; color: #27251F; }
+  .table-row .won { color: #27251F; font-weight: 700; }
+  .table-row .pipe { color: #DB0007; font-weight: 700; }
+  .badge {
+    display: inline-block; padding: 2px 10px; border-radius: 12px;
+    font-size: 11px; font-weight: 800;
+  }
+  .badge.green { background: #E8FAF2; color: #1A9E55; }
+  .badge.yellow { background: #FFF8E1; color: #B8860B; }
+  .badge.red { background: #FDECEA; color: #C0392B; }
+  .table-group {
+    background: #3D3B35; padding: 8px 20px;
+    font-size: 11px; font-weight: 800; color: #FFBC0D; text-transform: uppercase; letter-spacing: 0.6px;
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<div class="topnav">
+  <div class="topnav-left">
+    <span class="topnav-logo">M</span>
+    <span class="topnav-title">CORPORATE PERFORMANCE DASHBOARD</span>
+  </div>
+  <div class="topnav-tabs">
+    <button class="topnav-tab active">Overview</button>
+    <button class="topnav-tab">Markets</button>
+    <button class="topnav-tab">Segments</button>
+    <button class="topnav-tab">Digital</button>
+  </div>
+  <div class="topnav-right">Q1 2026 &nbsp;|&nbsp; Last updated: Mar 15, 2026 &nbsp;|&nbsp; <strong style="color:#FFBC0D;">Corporate Comms View</strong></div>
+</div>
+
+<!-- SUBHEADER -->
+<div class="subheader">
+  <div>
+    <div class="subheader-title">GLOBAL SALES PERFORMANCE — Q1 2026</div>
+    <div class="subheader-sub">Accelerating the Arches Strategy &nbsp;·&nbsp; All figures in USD Billions &nbsp;·&nbsp; Systemwide Sales</div>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">Market:</span>
+    <button class="filter-btn active">All Markets</button>
+    <button class="filter-btn">US</button>
+    <button class="filter-btn">IOM</button>
+    <button class="filter-btn">APMEA</button>
+    <button class="filter-btn">Europe</button>
+  </div>
+</div>
+
+<!-- KPI TILES -->
+<div class="kpi-row">
+  <div class="kpi-tile">
+    <div class="kpi-label">Revenue Won</div>
+    <div class="kpi-value">$20.29B</div>
+    <div class="kpi-delta up">▲ 8.4% vs Q1 2025</div>
+  </div>
+  <div class="kpi-tile red">
+    <div class="kpi-label">Qualified Pipeline</div>
+    <div class="kpi-value">$28.40B</div>
+    <div class="kpi-delta up">▲ 11.2% vs Q1 2025</div>
+  </div>
+  <div class="kpi-tile blue">
+    <div class="kpi-label">Revenue Goal</div>
+    <div class="kpi-value">$23.00B</div>
+    <div class="kpi-delta neutral">FY 2026 Target</div>
+  </div>
+  <div class="kpi-tile green">
+    <div class="kpi-label">Forecast Attainment</div>
+    <div class="kpi-value">131%</div>
+    <div class="kpi-delta up">▲ Exceeding Plan</div>
+  </div>
+</div>
+
+<!-- CHART ROW 1 -->
+<div class="chart-grid">
+  <div class="chart-card">
+    <div class="chart-title">Revenue by Market ($B)</div>
+    <canvas id="marketChart" height="200"></canvas>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Channel Mix — Revenue ($B)</div>
+    <canvas id="channelChart" height="200"></canvas>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Digital Sales Penetration (%)</div>
+    <canvas id="digitalChart" height="200"></canvas>
+  </div>
+</div>
+
+<!-- CHART ROW 2 + TABLE -->
+<div class="chart-grid-bottom">
+  <div class="chart-card">
+    <div class="chart-title">Menu Segment Performance ($B)</div>
+    <canvas id="segmentChart" height="220"></canvas>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Consumer Journey Funnel</div>
+    <canvas id="funnelChart" height="220"></canvas>
+  </div>
+</div>
+
+<!-- TABLE -->
+<div class="table-section">
+  <div class="table-card">
+    <div class="table-header">
+      <span>Product / Segment</span>
+      <span>Revenue Won</span>
+      <span>Qualified Pipeline</span>
+      <span>Forecast %</span>
+      <span>Status</span>
+    </div>
+    <div class="table-group">Core Burgers</div>
+    <div class="table-row"><span>Big Mac Platform</span><span class="won">$3.21B</span><span class="pipe">$4.85B</span><span>132%</span><span><span class="badge green">On Track</span></span></div>
+    <div class="table-row"><span>Quarter Pounder</span><span class="won">$2.87B</span><span class="pipe">$3.92B</span><span>128%</span><span><span class="badge green">On Track</span></span></div>
+    <div class="table-group">Chicken</div>
+    <div class="table-row"><span>Crispy Chicken Platform</span><span class="won">$2.54B</span><span class="pipe">$3.67B</span><span>141%</span><span><span class="badge green">Exceeding</span></span></div>
+    <div class="table-row"><span>McNuggets</span><span class="won">$2.18B</span><span class="pipe">$2.98B</span><span>135%</span><span><span class="badge green">Exceeding</span></span></div>
+    <div class="table-group">McCafé & Beverages</div>
+    <div class="table-row"><span>Premium Coffee</span><span class="won">$1.43B</span><span class="pipe">$2.10B</span><span>119%</span><span><span class="badge yellow">Monitor</span></span></div>
+    <div class="table-row"><span>McFlurry & Desserts</span><span class="won">$0.98B</span><span class="pipe">$1.54B</span><span>112%</span><span><span class="badge yellow">Monitor</span></span></div>
+    <div class="table-group">Digital & Delivery</div>
+    <div class="table-row"><span>McDelivery (Owned App)</span><span class="won">$2.12B</span><span class="pipe">$3.20B</span><span>138%</span><span><span class="badge green">Exceeding</span></span></div>
+    <div class="table-row"><span>3P Delivery Partners</span><span class="won">$1.75B</span><span class="pipe">$2.45B</span><span>124%</span><span><span class="badge green">On Track</span></span></div>
+    <div class="table-group" style="background:#1a1a16;">Total</div>
+    <div class="table-row" style="background:#FFFBEE;">
+      <span style="font-weight:900;">TOTAL</span>
+      <span class="won" style="font-size:15px;">$20.29B</span>
+      <span class="pipe" style="font-size:15px;">$28.40B</span>
+      <span style="font-weight:900;">131%</span>
+      <span><span class="badge green">On Track</span></span>
+    </div>
+  </div>
+</div>
+
+<script>
+const gold = '#FFBC0D', red = '#DB0007', dark = '#27251F', blue = '#2980B9', green = '#2ECC71', gray = '#8C8C8C';
+const gridColor = 'rgba(0,0,0,0.06)';
+const baseFont = { family: "'Segoe UI', Arial, sans-serif", size: 12, color: dark };
+
+// Market Chart
+new Chart(document.getElementById('marketChart'), {
+  type: 'bar',
+  data: {
+    labels: ['US', 'IOM', 'APMEA', 'Europe', 'China'],
+    datasets: [
+      { label: 'Revenue Won', data: [5.82, 3.21, 4.45, 3.87, 2.94], backgroundColor: gold, borderRadius: 4 },
+      { label: 'Pipeline', data: [8.10, 4.60, 6.20, 5.40, 4.10], backgroundColor: red, borderRadius: 4 }
+    ]
+  },
+  options: {
+    responsive: true, plugins: { legend: { position: 'bottom', labels: { font: baseFont, boxWidth: 14 } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: baseFont } },
+      y: { grid: { color: gridColor }, ticks: { font: baseFont, callback: v => '$' + v + 'B' } }
+    }
+  }
+});
+
+// Channel Mix
+new Chart(document.getElementById('channelChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Digital/App', 'Drive-Thru', 'Dine-In', 'Delivery', 'McCafé'],
+    datasets: [{
+      label: 'Revenue ($B)',
+      data: [10.52, 8.34, 4.21, 3.87, 2.43],
+      backgroundColor: [gold, red, dark, blue, green], borderRadius: 4
+    }]
+  },
+  options: {
+    responsive: true, plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { grid: { color: gridColor }, ticks: { font: baseFont, callback: v => '$' + v + 'B' } }
+    }
+  }
+});
+
+// Digital Penetration
+new Chart(document.getElementById('digitalChart'), {
+  type: 'line',
+  data: {
+    labels: ["Q1 '25", "Q2 '25", "Q3 '25", "Q4 '25", "Q1 '26"],
+    datasets: [{
+      label: 'Digital %', data: [38, 41, 44, 47, 51],
+      borderColor: gold, backgroundColor: 'rgba(255,188,13,0.15)',
+      pointBackgroundColor: gold, pointRadius: 6, borderWidth: 3,
+      fill: true, tension: 0.3
+    }]
+  },
+  options: {
+    responsive: true, plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: baseFont } },
+      y: { grid: { color: gridColor }, ticks: { font: baseFont, callback: v => v + '%' }, min: 30, max: 60 }
+    }
+  }
+});
+
+// Segment Performance
+new Chart(document.getElementById('segmentChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Core Burgers', 'Chicken', 'McCafé', 'Delivery'],
+    datasets: [
+      { label: 'Revenue Won', data: [6.08, 4.72, 2.41, 3.87], backgroundColor: gold, borderRadius: 4 },
+      { label: 'Pipeline', data: [8.77, 6.65, 3.64, 5.65], backgroundColor: red, borderRadius: 4 }
+    ]
+  },
+  options: {
+    responsive: true, plugins: { legend: { position: 'bottom', labels: { font: baseFont, boxWidth: 14 } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+      y: { grid: { color: gridColor }, ticks: { font: baseFont, callback: v => '$' + v + 'B' } }
+    }
+  }
+});
+
+// Funnel
+new Chart(document.getElementById('funnelChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Awareness', 'Consideration', 'Preference', 'Purchase'],
+    datasets: [{
+      label: 'Consumer Funnel (%)',
+      data: [84.2, 61.5, 43.8, 29.3],
+      backgroundColor: [gold, '#FFC933', '#FFD966', '#FFE599'], borderRadius: 4
+    }]
+  },
+  options: {
+    indexAxis: 'y', responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: gridColor }, ticks: { font: baseFont, callback: v => v + '%' }, max: 100 },
+      y: { grid: { display: false }, ticks: { font: { size: 12, weight: 'bold' } } }
+    }
+  }
+});
+</script>
+</body>
+</html>
